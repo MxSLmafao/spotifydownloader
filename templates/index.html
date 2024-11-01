@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Music Downloader</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1DB954;
+            --danger-color: #dc3545;
+            --background-color: #f5f5f5;
+            --text-color: #333;
+            --container-bg: white;
+            --shadow-color: rgba(0,0,0,0.1);
+            --error-bg: #f8d7da;
+            --error-color: #721c24;
+            --success-bg: #d4edda;
+            --success-color: #155724;
+            --progress-bg: #e9ecef;
+            --progress-bar-bg: var(--primary-color);
+            --border-color: #ddd;
+            --loading-bg: rgba(0,0,0,0.1);
+        }
+
+        [data-theme="dark"] {
+            --background-color: #121212;
+            --text-color: #ffffff;
+            --container-bg: #282828;
+            --shadow-color: rgba(255,255,255,0.1);
+            --error-bg: #442326;
+            --error-color: #ff8c94;
+            --success-bg: #1e3a2b;
+            --success-color: #90ee90;
+            --progress-bg: #1a1a1a;
+            --border-color: #444;
+            --loading-bg: rgba(255,255,255,0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            background-color: var(--container-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            width: 100%;
+            max-width: 600px;
+            position: relative;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        /* Search Container Styles */
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .search-container input[type="text"] {
+            width: 100%;
+            padding: 0.8rem;
+            padding-right: 2.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            background-color: var(--container-bg);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+
+        .search-button {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 8px;
+            transition: color 0.3s ease;
+            z-index: 2;
+        }
+
+        .search-button:hover {
+            color: var(--primary-color);
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-toggle:hover {
+            transform: rotate(180deg);
+            background-color: var(--shadow-color);
+        }
+
+        /* Form Elements */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-color);
+        }
+
+        input[type="text"],
+        select {
+            padding: 0.8rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            background-color: var(--container-bg);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.1);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        /* Progress Section */
+        .progress-section {
+            margin-top: 1.5rem;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .progress-container {
+            margin-bottom: 1.5rem;
+            background-color: var(--background-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px var(--shadow-color);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 12px;
+            background-color: var(--progress-bg);
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-bar {
+            width: 0;
+            height: 100%;
+            background-color: var(--progress-bar-bg);
+            transition: width 0.3s ease-out;
+            position: relative;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.2) 50%,
+                transparent 100%
+            );
+            animation: shimmer 1.5s infinite;
+        }
+
+        /* Buttons */
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        button:not(.search-button):hover:not(:disabled) {
+            background-color: #1ed760;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(29, 185, 84, 0.2);
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .cancel-button {
+            background-color: var(--danger-color);
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        .cancel-button:hover:not(:disabled) {
+            background-color: #bb2d3b;
+        }
+
+        /* Messages */
+        .message {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 8px;
+            animation: fadeIn 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .message.error {
+            background-color: var(--error-bg);
+            color: var(--error-color);
+        }
+
+        .message.success {
+            background-color: var(--success-bg);
+            color: var(--success-color);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+        }
+
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            background-color: var(--container-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1001;
+            opacity: 0;
+            transition: all 0.3s ease-out;
+        }
+
+        .modal.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 480px) {
+            .container {
+                padding: 1.5rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .search-container input[type="text"] {
+                font-size: 0.9rem;
+            }
+
+            .modal {
+                width: 95%;
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="theme-toggle" aria-label="Toggle dark mode">
+            <i class="fas fa-moon"></i>
+        </button>
+        
+        <h1>Spotify Music Downloader</h1>
+        
+        <form id="downloadForm">
+            <div class="form-group">
+                <label for="spotify_url">Spotify URL:</label>
+                <input type="text" id="spotify_url" name="spotify_url" required 
+                       placeholder="https://open.spotify.com/track/...">
+            </div>
+            
+            <div class="form-group">
+                <label for="search">Search Songs:</label>
+                <div class="search-container">
+                    <input type="text" id="search" 
+                           placeholder="Search by title or artist...">
+                    <button type="button" class="search-button" aria-label="Search">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="format">Output Format:</label>
+                <select id="format" name="format">
+                    {% for format in formats %}
+                    <option value="{{ format }}">{{ format.upper() }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <button type="submit" id="submitBtn">
+                <span class="button-text">Download</span>
+                <span class="spinner" style="display: none;"></span>
+            </button>
+        </form>
+
+        <div class="progress-section" style="display: none;">
+            <div class="progress-container">
+                <div class="progress-info">
+                    <span class="progress-stage">Overall Progress</span>
+                    <span class="progress-percentage">0%</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar"></div>
+                </div>
+                <div class="current-track-info">
+                    <div class="track-name">Waiting to start...</div>
+                    <div class="download-count">Preparing download...</div>
+                    <div class="download-speed" style="display: none;"></div>
+                </div>
+            </div>
+
+            <button class="cancel-button" id="cancelDownload">
+                <i class="fas fa-stop"></i> Cancel Download
+            </button>
+        </div>
+
+        <div id="message" class="message" style="display: none;">
+            <i class="fas"></i>
+            <span class="message-text"></span>
+        </div>
+    </div>
+
+    <!-- Search Results Modal -->
+    <div class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Search Results</h2>
+                <button class="close-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="search-results"></div>
+            <div class="search-spinner" style="display: none;"></div>
+            <button class="load-more" style="display: none;">Load More Results</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Element selectors with error handling
+            function getElement(selector, context = document) {
+                const element = context.querySelector(selector);
+                if (!element) {
+                    console.error(`Element not found: ${selector}`);
+                    return null;
+                }
+                return element;
+            }
+
+            // UI Elements
+            const elements = {
+                themeToggle: getElement('.theme-toggle'),
+                icon: getElement('.theme-toggle i'),
+                downloadForm: getElement('#downloadForm'),
+                submitBtn: getElement('#submitBtn'),
+                buttonText: getElement('.button-text'),
+                spinner: getElement('.spinner'),
+                progressSection: getElement('.progress-section'),
+                progressBar: getElement('.progress-bar'),
+                progressPercentage: getElement('.progress-percentage'),
+                trackName: getElement('.track-name'),
+                downloadCount: getElement('.download-count'),
+                downloadSpeed: getElement('.download-speed'),
+                cancelButton: getElement('#cancelDownload'),
+                searchInput: getElement('#search'),
+                searchButton: getElement('.search-button'),
+                modalOverlay: getElement('.modal-overlay'),
+                modal: getElement('.modal'),
+                closeModal: getElement('.close-modal'),
+                searchResults: getElement('.search-results'),
+                searchSpinner: getElement('.search-spinner'),
+                loadMoreButton: getElement('.load-more'),
+                message: getElement('#message'),
+                spotifyUrlInput: getElement('#spotify_url')
+            };
+
+            // Validate all elements are found
+            const missingElements = Object.entries(elements)
+                .filter(([key, value]) => !value)
+                .map(([key]) => key);
+
+            if (missingElements.length > 0) {
+                console.error('Missing UI elements:', missingElements);
+                return;
+            }
+
+            // State management
+            const state = {
+                currentSearchOffset: 0,
+                searchTotal: 0,
+                searchLimit: 5,
+                currentEventSource: null,
+                retryAttempt: 0,
+                maxRetryAttempts: 3,
+                retryDelays: [1000, 3000, 5000],
+                searchDebounceTimer: null,
+                isDark: localStorage.getItem('theme') === 'dark'
+            };
+
+            // Theme management
+            function setTheme(isDark) {
+                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+                elements.icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                state.isDark = isDark;
+            }
+
+            // Initialize theme
+            setTheme(state.isDark);
+
+            // UI Helpers
+            function showMessage(type, text) {
+                elements.message.className = `message ${type}`;
+                const icon = elements.message.querySelector('i');
+                if (icon) {
+                    icon.className = type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-check-circle';
+                }
+                const messageText = elements.message.querySelector('.message-text');
+                if (messageText) {
+                    messageText.textContent = text;
+                }
+                elements.message.style.display = 'flex';
+                elements.message.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            function clearProgressDisplay() {
+                elements.progressSection.style.display = 'none';
+                elements.progressBar.style.width = '0%';
+                elements.progressPercentage.textContent = '0%';
+                elements.trackName.textContent = 'Waiting to start...';
+                elements.downloadCount.textContent = 'Preparing download...';
+                elements.downloadSpeed.style.display = 'none';
+            }
+
+            function showSpinner(show) {
+                elements.buttonText.style.display = show ? 'none' : 'inline';
+                elements.spinner.style.display = show ? 'inline-block' : 'none';
+                elements.submitBtn.disabled = show;
+            }
+
+            // Modal Management
+            function showModal() {
+                elements.modalOverlay.style.display = 'block';
+                requestAnimationFrame(() => {
+                    elements.modalOverlay.classList.add('show');
+                    elements.modal.classList.add('show');
+                });
+            }
+
+            function hideModal() {
+                elements.modalOverlay.classList.remove('show');
+                elements.modal.classList.remove('show');
+                setTimeout(() => {
+                    elements.modalOverlay.style.display = 'none';
+                    elements.searchResults.innerHTML = '';
+                    elements.loadMoreButton.style.display = 'none';
+                    state.currentSearchOffset = 0;
+                }, 300);
+            }
+
+            // Search functionality
+            async function performSearch(append = false) {
+                if (!append) {
+                    elements.searchResults.innerHTML = '';
+                    state.currentSearchOffset = 0;
+                    elements.loadMoreButton.style.display = 'none';
+                }
+
+                const query = elements.searchInput.value.trim();
+                if (!query) return;
+
+                elements.searchSpinner.style.display = 'block';
+                elements.loadMoreButton.style.display = 'none';
+
+                try {
+                    const response = await fetch(
+                        `/search?q=${encodeURIComponent(query)}&offset=${state.currentSearchOffset}&limit=${state.searchLimit}`
+                    );
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Search failed');
+                    }
+
+                    state.searchTotal = data.total;
+
+                    data.tracks.forEach(track => {
+                        const trackElement = document.createElement('div');
+                        trackElement.className = 'track-result';
+                        trackElement.innerHTML = `
+                            <img class="track-image" src="${track.image || 'placeholder.jpg'}" 
+                                 alt="${track.title}" loading="lazy">
+                            <div class="track-details">
+                                <div class="track-title">${track.title}</div>
+                                <div class="track-artist">${track.artist}</div>
+                            </div>
+                            <button class="select-track" data-url="${track.url}">Select</button>
+                        `;
+
+                        trackElement.querySelector('.select-track').addEventListener('click', () => {
+                            elements.spotifyUrlInput.value = track.url;
+                            hideModal();
+                        });
+
+                        elements.searchResults.appendChild(trackElement);
+                    });
+
+                    state.currentSearchOffset += data.tracks.length;
+                    elements.loadMoreButton.style.display = 
+                        state.currentSearchOffset < state.searchTotal ? 'block' : 'none';
+
+                } catch (error) {
+                    console.error('Search error:', error);
+                    elements.searchResults.innerHTML = `
+                        <div class="message error">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <span>Search failed: ${error.message}</span>
+                        </div>
+                    `;
+                } finally {
+                    elements.searchSpinner.style.display = 'none';
+                }
+            }
+
+            // Event Source Management
+            function cleanupEventSource() {
+                if (state.currentEventSource) {
+                    state.currentEventSource.close();
+                    state.currentEventSource = null;
+                }
+                state.retryAttempt = 0;
+            }
+
+            // Event Listeners
+            elements.themeToggle.addEventListener('click', () => setTheme(!state.isDark));
+
+            elements.searchButton.addEventListener('click', () => {
+                if (elements.searchInput.value.trim()) {
+                    showModal();
+                    performSearch();
+                }
+            });
+
+            elements.searchInput.addEventListener('input', () => {
+                clearTimeout(state.searchDebounceTimer);
+                state.searchDebounceTimer = setTimeout(() => performSearch(), 500);
+            });
+
+            elements.loadMoreButton.addEventListener('click', () => performSearch(true));
+
+            elements.closeModal.addEventListener('click', hideModal);
+
+            elements.modalOverlay.addEventListener('click', (e) => {
+                if (e.target === elements.modalOverlay) {
+                    hideModal();
+                }
+            });
+
+            elements.cancelButton.addEventListener('click', async () => {
+                try {
+                    elements.cancelButton.disabled = true;
+                    const response = await fetch('/cancel', { method: 'POST' });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to cancel download');
+                    }
+                    
+                    cleanupEventSource();
+                    showMessage('error', 'Download cancelled');
+                } catch (error) {
+                    console.error('Error cancelling download:', error);
+                    elements.cancelButton.disabled = false;
+                }
+            });
+
+            elements.downloadForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                showSpinner(true);
+                elements.progressSection.style.display = 'none';
+                clearProgressDisplay();
+                elements.message.style.display = 'none';
+
+                try {
+                    const response = await fetch('/download', {
+                        method: 'POST',
+                        body: new FormData(elements.downloadForm)
+                    });
+                    
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Download failed');
+                    }
+
+                    setupEventSource(data.queue_id);
+                    
+                } catch (error) {
+                    showMessage('error', error.message || 'An error occurred. Please try again.');
+                    showSpinner(false);
+                }
+            });
+
+            // Handle keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && elements.modalOverlay.style.display === 'block') {
+                    hideModal();
+                }
+            });
+
+            // Initialize the UI
+            clearProgressDisplay();
+            setTheme(state.isDark);
+        });
+    </script>
+</body>
+</html>
