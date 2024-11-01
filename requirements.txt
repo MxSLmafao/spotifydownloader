@@ -1,0 +1,5 @@
+spotipy 
+yt-dlp 
+pydub 
+Flask 
+tqdm
